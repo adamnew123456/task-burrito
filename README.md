@@ -75,12 +75,9 @@ export formats:
 
 - A **calendar** view which shows tasks according to the dates when they're due.
 
-- A **tree** view which shows the hierarchical structure of tasks.
-
 - A **dependency** view which shows a directed graph of tasks connected by
   dependencies. Requires graphviz.
   
-- A **simple** view which is a basic version of plain, which renders the task
-  metadata and notes in one list
+- A **simple** view which renders the file to HTML and adds a table of contents
 
 - A **plain** view which parses the file and re-assembles it for printing

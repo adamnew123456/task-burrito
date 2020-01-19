@@ -400,7 +400,7 @@ def plain_exporter(tasks: List[Task]):
         print(task.content, end="")
 
 
-def simple_exporter(tasks: List[Task]):
+def simple_exporter(task_map: Mapping[Tuple[int], Task]):
     """
     Exports a task list into HTML without doing any restructuring, similar to
     the plain_exporter.
@@ -423,7 +423,7 @@ def simple_exporter(tasks: List[Task]):
 </html>
 """
 
-    tasks = sort_tasks(tasks)
+    tasks = sort_tasks(task_map.values())
 
     print(header)
     print("<h1> Table of Contents </h1>")
@@ -438,7 +438,10 @@ def simple_exporter(tasks: List[Task]):
             depth -= 1
 
         if task.status == TaskStatus.BLOCKED:
-            short_line = "BLOCKED on {}".format(", ".join(task_id_link(dep) for dep in task.depends))
+            blockers = (task_map[dep] for dep in sorted(task.depends) if task_map[dep].status != TaskStatus.DONE)
+            short_line = "BLOCKED on {}".format(
+                ", ".join(task_id_link(dep.task_id) for dep in blockers)
+            )
         elif task.status == TaskStatus.TODO:
             if task.deadline is None:
                 short_line = "TODO"
@@ -454,7 +457,14 @@ def simple_exporter(tasks: List[Task]):
         else:
             short_line = "Unknown status {}".format(task.status)
 
-        print("<li><strong style='font-size: 1.5em'>", task_id_link(task.task_id), html.escape(task.label), "</strong>", short_line, "</li>")
+        print(
+            "<li><strong style='font-size: 1.5em'>",
+            task_id_link(task.task_id),
+            html.escape(task.label),
+            "</strong>",
+            short_line,
+            "</li>",
+        )
 
     while depth > 0:
         print("</ol>")
@@ -521,7 +531,7 @@ def main():
         if exporter == "plain":
             plain_exporter(tasks)
         elif exporter == "simple":
-            simple_exporter(tasks)
+            simple_exporter(task_map)
         else:
             print("Unknown exporter:", exporter, file=sys.stderr)
             sys.exit(1)
