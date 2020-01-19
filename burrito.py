@@ -6,7 +6,7 @@ Arguments:
 - INPUT-FILE: The path to a Markdown file with Task Burrito anntoations. May
   also be - for stdin.
 
-- EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar", "dependency")
+- EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar")
 
 - PROPERTY=VALUE: Exporter-specific configuration options. Properties with the
   BOOLEAN tag should be assigned to either 1 or 0.

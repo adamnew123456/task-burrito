@@ -74,9 +74,6 @@ Once you have a Task Burrito file, you can export it into one of a few different
 export formats:
 
 - A **calendar** view which shows tasks according to the dates when they're due.
-
-- A **dependency** view which shows a directed graph of tasks connected by
-  dependencies. Requires graphviz.
   
 - A **simple** view which renders the file to HTML and adds a table of contents
 
