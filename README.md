@@ -24,19 +24,21 @@ Include information about the default settings, supported units and edge cases a
 ```
 
 The front block enclosed in three hyphens and contains the basic details of a
-task. All of these task options must be at the start of a line:
+task. All of these task options must be at the start of a line and are 
+case-sensitive:
 
 - *task* is the task identifier, which is used to refer to the task. Task
   identifiers form a tree, so that task 1.1.2 is the second child of task 1.1
   and a grand-child of task 1.
   
-- *label* is the display name of the task that shows up in rendered views. It can
-  contain any text except a newline.
+- *label* is the display name of the task that shows up in rendered views. It
+  can contain any text except a newline, although leading and trailing
+  whitespace is ignored.
   
 - *status* may be one of: **DONE** meaning the task is completed, **IN-PROGRESS**
   meaning that the task is being worked on but is not complete, **BLOCKED** meaning
   the task is waiting on one of its dependent tasks to finish and **TODO** meaning
-  that the task has not been started yet.
+  that the task has not been started yet. All of these are case-sensitive.
   
 - *priority* is a number from 1 to 5. Lower values are considered to be higher
   priority.
@@ -64,8 +66,7 @@ I am related to the [timeout settings docs](#1.1.2)
 ```
 
 Task Burrito files are just a sequence of these tasks, sorted by the task
-identifier. By default, Task Burrito will not process files that have task
-blocks which are out of order.
+identifier.
 
 # Exporters
 
@@ -78,3 +79,5 @@ export formats:
 
 - A **dependency** view which shows a directed graph of tasks connected by
   dependencies. Requires graphviz.
+
+- A **plain** view which parses the file and re-assembles it for printing
