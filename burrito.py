@@ -15,6 +15,7 @@ Plain Exporter Properties:
 None.
 """
 
+import calendar
 from collections import defaultdict
 from dataclasses import dataclass, field
 import datetime
@@ -400,6 +401,42 @@ def plain_exporter(tasks: List[Task]):
         print(task.content, end="")
 
 
+def export_tasks_only(tasks: List[Task]):
+    """
+    Exports information about tasks only without any front matter. Meant for
+    use with other exporters.
+    """
+    for task in tasks:
+        print(
+            "<h1 id='{}'>".format(task_id_str(task.task_id)),
+            task_id_str(task.task_id),
+            html.escape(task.label),
+            "</h1>",
+        )
+        print("<div><table>")
+        print("<tr>")
+        print("<th>ID</th>")
+        print("<th>Status</th>")
+        print("<th>Priority</th>")
+        print("<th>Deadline</th>")
+        print("<th>Dependencies</th>")
+        print("</tr>")
+        print("<td>", task_id_str(task.task_id), "</td>")
+        print("<td>", str(task.status), "</td>")
+        print("<td>", task.priority or "Unassigned", "</td>")
+        print("<td>", task.deadline.isoformat() or "Unassigned", "</td>")
+        print(
+            "<td>",
+            ", ".join(task_id_link(dep) for dep in sorted(task.depends)),
+            "</td>",
+        )
+        print("</tr>")
+        print("</table></div>")
+        if task.content:
+            print("<h2>Notes</h2>")
+            print(markdown.markdown(task.content))
+
+
 def simple_exporter(task_map: Mapping[Tuple[int], Task]):
     """
     Exports a task list into HTML without doing any restructuring, similar to
@@ -438,7 +475,11 @@ def simple_exporter(task_map: Mapping[Tuple[int], Task]):
             depth -= 1
 
         if task.status == TaskStatus.BLOCKED:
-            blockers = (task_map[dep] for dep in sorted(task.depends) if task_map[dep].status != TaskStatus.DONE)
+            blockers = (
+                task_map[dep]
+                for dep in sorted(task.depends)
+                if task_map[dep].status != TaskStatus.DONE
+            )
             short_line = "BLOCKED on {}".format(
                 ", ".join(task_id_link(dep.task_id) for dep in blockers)
             )
@@ -471,37 +512,152 @@ def simple_exporter(task_map: Mapping[Tuple[int], Task]):
         depth -= 1
 
     print("<hr>")
+    export_tasks_only(tasks)
+    print(footer)
 
-    for task in tasks:
-        print(
-            "<h1 id='{}'>".format(task_id_str(task.task_id)),
-            task_id_str(task.task_id),
-            html.escape(task.label),
-            "</h1>",
-        )
-        print("<div><table>")
-        print("<tr>")
-        print("<th>ID</th>")
-        print("<th>Status</th>")
-        print("<th>Priority</th>")
-        print("<th>Deadline</th>")
-        print("<th>Dependencies</th>")
-        print("</tr>")
-        print("<td>", task_id_str(task.task_id), "</td>")
-        print("<td>", str(task.status), "</td>")
-        print("<td>", task.priority or "Unassigned", "</td>")
-        print("<td>", task.deadline.isoformat() or "Unassigned", "</td>")
-        print(
-            "<td>",
-            ", ".join(task_id_link(dep) for dep in sorted(task.depends)),
-            "</td>",
-        )
-        print("</tr>")
-        print("</table></div>")
-        if task.content:
-            print("<h2>Notes</h2>")
-            print(markdown.markdown(task.content))
 
+def first_day_of_month(date: datetime.date) -> datetime.date:
+    """
+    Computes the first day of the given month
+    """
+    return date - datetime.timedelta(days=date.day - 1)
+
+
+def first_day_of_next_month(date: datetime.date) -> datetime.date:
+    """
+    Computes the first day of the month after the given one.
+    """
+    this_month = first_day_of_month(date)
+    end_of_year = this_month.month == 12
+    return datetime.date(
+        this_month.year if not end_of_year else this_month.year + 1,
+        this_month.month + 1 if not end_of_year else 1,
+        1,
+    )
+
+
+def calendar_exporter(task_map: Mapping[Tuple[int], Task]):
+    """
+    Exports a task list into a basic calendar view.
+    """
+    header = """
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title> Project Calendar </title>
+        <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; }
+        </style>
+    </head>
+    <body>
+"""
+    footer = """
+    </body>
+</html>
+"""
+
+    tasks = sort_tasks(task_map.values())
+    tasks_with_deadline = (
+        task
+        for task in tasks
+        if task.deadline is not None and task.status != TaskStatus.DONE
+    )
+    tasks_by_deadline = sorted(tasks_with_deadline, key=lambda task: task.deadline)
+
+    print(header)
+
+    if not tasks_by_deadline:
+        print("<h1> No Active Tasks Have A Deadline</h1>")
+    else:
+        today = datetime.date.today()
+        current_date = first_day_of_month(today)
+        current_weekday = calendar.weekday(
+            current_date.year, current_date.month, current_date.day
+        )
+        first_day = True
+        new_month = True
+        new_week = True
+
+        while tasks_by_deadline:
+            next_task = tasks_by_deadline.pop()
+
+            while current_date <= next_task.deadline:
+                if not first_day:
+                    print("</td>")
+
+                if new_month:
+                    if not first_day:
+                        print("</tr>")
+                        print("</table>")
+
+                    first_day = False
+                    print(
+                        "<h1> {} {} </h1>".format(
+                            calendar.month_name[current_date.month], current_date.year
+                        )
+                    )
+                    print("<table>")
+                    print("<tr>")
+                    print("<th> Monday </th>")
+                    print("<th> Tuesday </th>")
+                    print("<th> Wednesday </th>")
+                    print("<th> Thursday </th>")
+                    print("<th> Friday </th>")
+                    print("<th> Saturday </th>")
+                    print("<th> Sunday </th>")
+                    print("</tr>")
+
+                    new_week = False
+                    new_month = False
+                    print("<tr>")
+                    for _ in range(current_weekday):
+                        print("<td></td>")
+
+                if new_week:
+                    print("</tr>")
+                    print("<tr>")
+                    new_week = False
+
+                print("<td><b>", current_date.day, "</b>")
+
+                current_weekday += 1
+                if current_weekday == 7:
+                    current_weekday = 0
+                    new_week = True
+
+                current_date += datetime.timedelta(days=1)
+                if current_date.day == 1:
+                    new_month = True
+
+            print("<div>")
+            print(
+                "{} {}".format(
+                    task_id_link(next_task.task_id), html.escape(next_task.label)
+                )
+            )
+            print("</div>")
+
+    print("</td>")
+    end_of_month = first_day_of_next_month(current_date) - datetime.timedelta(days=1)
+    while current_date <= end_of_month:
+        if new_week:
+            print("</tr>")
+            print("<tr>")
+            new_week = False
+
+        print("<td><b>", current_date.day, "</b></td>")
+
+        current_weekday += 1
+        if current_weekday == 7:
+            current_weekday = 0
+            new_week = True
+
+        current_date += datetime.timedelta(days=1)
+
+    print("</tr></table>")
+    print("<hr>")
+    export_tasks_only(tasks)
     print(footer)
 
 
@@ -525,6 +681,10 @@ def main():
             in_fobj = open(input_file)
 
         tasks = parse_file(in_fobj)
+        if not tasks:
+            print("Tasks file cannot be empty", file=sys.stderr)
+            sys.exit(1)
+
         task_map = verify_task_tree(tasks)
         resolve_default_values(task_map)
 
@@ -532,6 +692,8 @@ def main():
             plain_exporter(tasks)
         elif exporter == "simple":
             simple_exporter(task_map)
+        elif exporter == "calendar":
+            calendar_exporter(task_map)
         else:
             print("Unknown exporter:", exporter, file=sys.stderr)
             sys.exit(1)
