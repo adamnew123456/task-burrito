@@ -79,5 +79,8 @@ export formats:
 
 - A **dependency** view which shows a directed graph of tasks connected by
   dependencies. Requires graphviz.
+  
+- A **simple** view which is a basic version of plain, which renders the task
+  metadata and notes in one list
 
 - A **plain** view which parses the file and re-assembles it for printing

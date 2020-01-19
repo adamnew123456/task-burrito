@@ -15,11 +15,13 @@ Plain Exporter Properties:
 None.
 """
 
+from collections import defaultdict
 from dataclasses import dataclass, field
 import datetime
 from enum import Enum
+import html
 import sys
-from typing import Any, IO, List, Mapping, Optional, Tuple
+from typing import Any, IO, List, Mapping, Optional, Tuple, Set
 
 import markdown
 
@@ -71,7 +73,7 @@ class Task:
     status: TaskStatus
     priority: Optional[int]
     deadline: Optional[datetime.date]
-    depends: List[List[int]]
+    depends: Set[Tuple[int]]
     content: str = field(default="", init=False)
 
 
@@ -85,7 +87,7 @@ def task_id_parent(task_id: Tuple[int]) -> Tuple[int]:
     return task_id[:-1]
 
 
-def task_id_ancestors(task_id: List[int]) -> List[Tuple[int]]:
+def task_id_ancestors(task_id: Tuple[int]) -> List[Tuple[int]]:
     """
     Gets the full list of tasks above the given task.
     """
@@ -98,11 +100,18 @@ def task_id_ancestors(task_id: List[int]) -> List[Tuple[int]]:
     return parents
 
 
-def task_id_str(task_id: List[int]) -> str:
+def task_id_str(task_id: Tuple[int]) -> str:
     """
     Converts a task identifier into a key for the task map.
     """
     return ".".join(str(part) for part in task_id)
+
+
+def task_id_link(task_id: Tuple[int]) -> str:
+    """
+    Converts a task identifier into an HTML link to that task.
+    """
+    return "<a href='#{}'> {} </a>".format(task_id_str(task_id), task_id_str(task_id))
 
 
 def verify_task_tree(tasks: List[Task]) -> Mapping[Tuple[int], Task]:
@@ -123,11 +132,26 @@ def verify_task_tree(tasks: List[Task]) -> Mapping[Tuple[int], Task]:
     return task_map
 
 
+def task_child_map(tasks: List[Task]) -> Mapping[Tuple[int], Set[Tuple[int]]]:
+    """
+    Builds a mapping from each task into the immediate children of that task.
+    """
+    task_children = defaultdict(set)
+    for task in tasks:
+        parent = task_id_parent(task.task_id)
+        if parent is not None:
+            task_children[parent].add(task.task_id)
+
+    return task_children
+
+
 def resolve_default_values(tasks: Mapping[Tuple[int], Task]):
     """
     Updates all tasks so that they inherit the provided values from their
     parent tasks.
     """
+    child_map = task_child_map(tasks.values())
+
     for task in sort_tasks(tasks.values()):
         parent_id = task_id_parent(task.task_id)
         if parent_id is not None:
@@ -137,6 +161,8 @@ def resolve_default_values(tasks: Mapping[Tuple[int], Task]):
 
             if task.priority is None:
                 task.priority = parent.priority
+
+        task.depends |= child_map[task.task_id]
 
 
 def sort_tasks(tasks: List[Task]) -> List[Task]:
@@ -243,7 +269,7 @@ def parse_task_property(prop: str, value: str, position: FilePosition) -> Option
                 warn(position, "Issue with task ID {}: {}", task, err.args[0])
                 return None
 
-        return list(set(task_ids))
+        return set(task_ids)
 
     else:
         warn(position, "Invalid task property {}", prop)
@@ -317,7 +343,7 @@ def parse_task(fobj: IO, position: FilePosition) -> Task:
         properties["status"],
         properties.get("priority"),
         properties.get("deadline"),
-        properties.get("depends", []),
+        properties.get("depends", set()),
     )
 
 
@@ -369,9 +395,66 @@ def plain_exporter(tasks: List[Task]):
         if task.deadline:
             print("deadline", task.deadline.isoformat())
         if task.depends:
-            print("depends", " ".join(task_id_str(dep) for dep in task.depends))
+            print("depends", " ".join(task_id_str(dep) for dep in sorted(task.depends)))
         print("---")
-        print(task.content, end='')
+        print(task.content, end="")
+
+
+def simple_exporter(tasks: List[Task]):
+    """
+    Exports a task list into HTML without doing any restructuring, similar to
+    the plain_exporter.
+    """
+    header = """
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title> Project List </title>
+        <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; }
+        </style>
+    </head>
+    <body>
+"""
+    footer = """
+    </body>
+</html>
+"""
+
+    tasks = sort_tasks(tasks)
+
+    print(header)
+    for task in tasks:
+        print(
+            "<h1 id='{}'>".format(task_id_str(task.task_id)),
+            html.escape(task.label),
+            "</h1>",
+        )
+        print("<div><table>")
+        print("<tr>")
+        print("<th>ID</th>")
+        print("<th>Status</th>")
+        print("<th>Priority</th>")
+        print("<th>Deadline</th>")
+        print("<th>Dependencies</th>")
+        print("</tr>")
+        print("<td>", task_id_str(task.task_id), "</td>")
+        print("<td>", str(task.status), "</td>")
+        print("<td>", task.priority or "Unassigned", "</td>")
+        print("<td>", task.deadline.isoformat() or "Unassigned", "</td>")
+        print(
+            "<td>",
+            ", ".join(task_id_link(dep) for dep in sorted(task.depends)),
+            "</td>",
+        )
+        print("</tr>")
+        print("</table></div>")
+        print("<h2>Notes</h2>")
+        print(markdown.markdown(task.content))
+        print("<hr>")
+
+    print(footer)
 
 
 def main():
@@ -399,9 +482,15 @@ def main():
 
         if exporter == "plain":
             plain_exporter(tasks)
+        elif exporter == "simple":
+            simple_exporter(tasks)
+        else:
+            print("Unknown exporter:", exporter, file=sys.stderr)
+            sys.exit(1)
 
     except IndexError:
         print("Usage: burrito INPUT-FILE EXPORTER [property=value]...", file=sys.stderr)
+        sys.exit(1)
 
 
 if __name__ == "__main__":
