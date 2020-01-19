@@ -231,7 +231,7 @@ def parse_task_property(prop: str, value: str, position: FilePosition) -> Option
             warn(position, "Invalid status value '{}'", value)
             return None
 
-        return value
+        return TaskStatus[value.replace("-", "_")]
 
     elif prop == "priority":
         try:
@@ -413,6 +413,7 @@ def simple_exporter(tasks: List[Task]):
         <title> Project List </title>
         <style>
         table, th, td { border: 1px solid black; border-collapse: collapse; }
+        .toc { list-style: none; }
         </style>
     </head>
     <body>
@@ -425,9 +426,46 @@ def simple_exporter(tasks: List[Task]):
     tasks = sort_tasks(tasks)
 
     print(header)
+    print("<h1> Table of Contents </h1>")
+    depth = 0
+    for task in tasks:
+        while depth < len(task.task_id):
+            print("<ol class='toc'>")
+            depth += 1
+
+        while depth > len(task.task_id):
+            print("</ol>")
+            depth -= 1
+
+        if task.status == TaskStatus.BLOCKED:
+            short_line = "BLOCKED on {}".format(", ".join(task_id_link(dep) for dep in task.depends))
+        elif task.status == TaskStatus.TODO:
+            if task.deadline is None:
+                short_line = "TODO"
+            else:
+                short_line = "TODO by {}".format(task.deadline.isoformat())
+        elif task.status == TaskStatus.DONE:
+            short_line = "DONE"
+        elif task.status == TaskStatus.IN_PROGRESS:
+            if task.deadline is None:
+                short_line = "IN-PROGRESS"
+            else:
+                short_line = "IN-PROGRESS, due by {}".format(task.deadline.isoformat())
+        else:
+            short_line = "Unknown status {}".format(task.status)
+
+        print("<li><strong style='font-size: 1.5em'>", task_id_link(task.task_id), html.escape(task.label), "</strong>", short_line, "</li>")
+
+    while depth > 0:
+        print("</ol>")
+        depth -= 1
+
+    print("<hr>")
+
     for task in tasks:
         print(
             "<h1 id='{}'>".format(task_id_str(task.task_id)),
+            task_id_str(task.task_id),
             html.escape(task.label),
             "</h1>",
         )
@@ -450,9 +488,9 @@ def simple_exporter(tasks: List[Task]):
         )
         print("</tr>")
         print("</table></div>")
-        print("<h2>Notes</h2>")
-        print(markdown.markdown(task.content))
-        print("<hr>")
+        if task.content:
+            print("<h2>Notes</h2>")
+            print(markdown.markdown(task.content))
 
     print(footer)
 
