@@ -6,13 +6,22 @@ Arguments:
 - INPUT-FILE: The path to a Markdown file with Task Burrito anntoations. May
   also be - for stdin.
 
-- EXPORTER: The name of an exporter (one of: "plain", "dependency", "tree", "calendar")
+- EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar", "dependency")
 
-- PROPERTY=VALUE: Exporter-specific configuration options
+- PROPERTY=VALUE: Exporter-specific configuration options. Properties with the
+  BOOLEAN tag should be assigned to either 1 or 0.
 
 Plain Exporter Properties:
 
 None.
+
+Simple Exporter Properties:
+
+- summary=BOOLEAN: Whether to include the full task list with notes. True by default.
+
+Calendar Exporter Properties:
+
+- summary=BOOLEAN: Whether to include the full task list with notes. True by default.
 """
 
 import calendar
@@ -380,7 +389,7 @@ def parse_file(fobj: IO) -> List[Task]:
     return tasks
 
 
-def plain_exporter(tasks: List[Task]):
+def plain_exporter(tasks: List[Task], configs: Mapping[str, str]):
     """
     Exports a task list back into the default format, sorting the tasks and
     dropping anything that was ignored.
@@ -437,7 +446,7 @@ def export_tasks_only(tasks: List[Task]):
             print(markdown.markdown(task.content))
 
 
-def simple_exporter(task_map: Mapping[Tuple[int], Task]):
+def simple_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, str]):
     """
     Exports a task list into HTML without doing any restructuring, similar to
     the plain_exporter.
@@ -511,8 +520,15 @@ def simple_exporter(task_map: Mapping[Tuple[int], Task]):
         print("</ol>")
         depth -= 1
 
-    print("<hr>")
-    export_tasks_only(tasks)
+    try:
+        summary = int(configs.get('summary', '1')) > 0
+    except ValueError:
+        summary = True
+
+    if summary:
+        print("<hr>")
+        export_tasks_only(tasks)
+
     print(footer)
 
 
@@ -536,7 +552,7 @@ def first_day_of_next_month(date: datetime.date) -> datetime.date:
     )
 
 
-def calendar_exporter(task_map: Mapping[Tuple[int], Task]):
+def calendar_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, str]):
     """
     Exports a task list into a basic calendar view.
     """
@@ -548,6 +564,7 @@ def calendar_exporter(task_map: Mapping[Tuple[int], Task]):
         <title> Project Calendar </title>
         <style>
         table, th, td { border: 1px solid black; border-collapse: collapse; }
+        td { vertical-align: top }
         </style>
     </head>
     <body>
@@ -580,7 +597,7 @@ def calendar_exporter(task_map: Mapping[Tuple[int], Task]):
         new_week = True
 
         while tasks_by_deadline:
-            next_task = tasks_by_deadline.pop()
+            next_task = tasks_by_deadline.pop(0)
 
             while current_date <= next_task.deadline:
                 if not first_day:
@@ -656,10 +673,32 @@ def calendar_exporter(task_map: Mapping[Tuple[int], Task]):
         current_date += datetime.timedelta(days=1)
 
     print("</tr></table>")
-    print("<hr>")
-    export_tasks_only(tasks)
+
+    try:
+        summary = int(configs.get('summary', '1')) > 0
+    except ValueError:
+        summary = True
+
+    if summary:
+        print("<hr>")
+        export_tasks_only(tasks)
+
     print(footer)
 
+def build_config_map(configs: List[str]) -> Mapping[str, str]:
+    """
+    Parses a configuration list into a mapping of configuration values.
+    """
+    config_map = {}
+    for config in configs:
+        if '=' not in config:
+            print("Invalid option '{}', not in KEY=VALUE format".format(config), file=sys.stderr)
+            sys.exit(1)
+
+        (key, value) = config.split('=', 2)
+        config_map[key] = value
+
+    return config_map
 
 def main():
     """
@@ -673,7 +712,7 @@ def main():
     try:
         input_file = sys.argv[1]
         exporter = sys.argv[2]
-        configs = sys.argv[3:]
+        configs = build_config_map(sys.argv[3:])
 
         if input_file == "-":
             in_fobj = sys.stdin
@@ -689,11 +728,11 @@ def main():
         resolve_default_values(task_map)
 
         if exporter == "plain":
-            plain_exporter(tasks)
+            plain_exporter(tasks, configs)
         elif exporter == "simple":
-            simple_exporter(task_map)
+            simple_exporter(task_map, configs)
         elif exporter == "calendar":
-            calendar_exporter(task_map)
+            calendar_exporter(task_map, configs)
         else:
             print("Unknown exporter:", exporter, file=sys.stderr)
             sys.exit(1)
