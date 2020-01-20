@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 Usage: burrito INPUT-FILE EXPORTER [PROPERTY=VALUE]...
 
@@ -6,7 +7,7 @@ Arguments:
 - INPUT-FILE: The path to a Markdown file with Task Burrito anntoations. May
   also be - for stdin.
 
-- EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar")
+- EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar", "full")
 
 - PROPERTY=VALUE: Exporter-specific configuration options. Properties with the
   BOOLEAN tag should be assigned to either 1 or 0.
@@ -20,6 +21,10 @@ Simple Exporter Properties:
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
 
 Calendar Exporter Properties:
+
+- summary=BOOLEAN: Whether to include the full task list with notes. True by default.
+
+Full Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
 """
@@ -122,6 +127,26 @@ def task_id_link(task_id: Tuple[int]) -> str:
     Converts a task identifier into an HTML link to that task.
     """
     return "<a href='#{}'> {} </a>".format(task_id_str(task_id), task_id_str(task_id))
+
+
+def task_status_color(status: TaskStatus) -> str:
+    """
+    Converts a task status into a color-coded form of the status.
+    """
+    if status == TaskStatus.TODO:
+        name = "TODO"
+        color = "red"
+    elif status == TaskStatus.IN_PROGRESS:
+        name = "IN-PROGRESS"
+        color = "orange"
+    elif status == TaskStatus.BLOCKED:
+        name = "BLOCKED"
+        color = "darkgoldenrod"
+    else:
+        name = "DONE"
+        color = "green"
+
+    return "<span style='font-weight: bold; color: {}'> {} </span>".format(color, name)
 
 
 def verify_task_tree(tasks: List[Task]) -> Mapping[Tuple[int], Task]:
@@ -410,7 +435,26 @@ def plain_exporter(tasks: List[Task], configs: Mapping[str, str]):
         print(task.content, end="")
 
 
-def export_tasks_only(tasks: List[Task]):
+HTML_HEADER = """
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <title> Project List </title>
+        <style>
+        table, th, td { border: 1px solid black; border-collapse: collapse; vertical-align: top; }
+        .toc { list-style: none; }
+        </style>
+    </head>
+    <body>
+"""
+
+HTML_FOOTER = """
+    </body>
+</html>
+"""
+
+def export_task_list(tasks: List[Task]):
     """
     Exports information about tasks only without any front matter. Meant for
     use with other exporters.
@@ -431,7 +475,7 @@ def export_tasks_only(tasks: List[Task]):
         print("<th>Dependencies</th>")
         print("</tr>")
         print("<td>", task_id_str(task.task_id), "</td>")
-        print("<td>", str(task.status), "</td>")
+        print("<td>", task_status_color(task.status), "</td>")
         print("<td>", task.priority or "Unassigned", "</td>")
         print("<td>", task.deadline.isoformat() or "Unassigned", "</td>")
         print(
@@ -446,32 +490,13 @@ def export_tasks_only(tasks: List[Task]):
             print(markdown.markdown(task.content))
 
 
-def simple_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, str]):
+def export_table_of_contents(task_map: Mapping[Tuple[int], Task]):
     """
     Exports a task list into HTML without doing any restructuring, similar to
     the plain_exporter.
     """
-    header = """
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title> Project List </title>
-        <style>
-        table, th, td { border: 1px solid black; border-collapse: collapse; }
-        .toc { list-style: none; }
-        </style>
-    </head>
-    <body>
-"""
-    footer = """
-    </body>
-</html>
-"""
-
     tasks = sort_tasks(task_map.values())
 
-    print(header)
     print("<h1> Table of Contents </h1>")
     depth = 0
     for task in tasks:
@@ -489,21 +514,22 @@ def simple_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, s
                 for dep in sorted(task.depends)
                 if task_map[dep].status != TaskStatus.DONE
             )
-            short_line = "BLOCKED on {}".format(
+            short_line = "{} on {}".format(
+                task_status_color(task.status),
                 ", ".join(task_id_link(dep.task_id) for dep in blockers)
             )
         elif task.status == TaskStatus.TODO:
             if task.deadline is None:
-                short_line = "TODO"
+                short_line = task_status_color(task.status)
             else:
-                short_line = "TODO by {}".format(task.deadline.isoformat())
+                short_line = "{} by {}".format(task_status_color(task.status), task.deadline.isoformat())
         elif task.status == TaskStatus.DONE:
-            short_line = "DONE"
+            short_line = task_status_color(task.status)
         elif task.status == TaskStatus.IN_PROGRESS:
             if task.deadline is None:
-                short_line = "IN-PROGRESS"
+                short_line = task_status_color(task.status)
             else:
-                short_line = "IN-PROGRESS, due by {}".format(task.deadline.isoformat())
+                short_line = "{} due by {}".format(task_status_color(task.status), task.deadline.isoformat())
         else:
             short_line = "Unknown status {}".format(task.status)
 
@@ -519,17 +545,6 @@ def simple_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, s
     while depth > 0:
         print("</ol>")
         depth -= 1
-
-    try:
-        summary = int(configs.get('summary', '1')) > 0
-    except ValueError:
-        summary = True
-
-    if summary:
-        print("<hr>")
-        export_tasks_only(tasks)
-
-    print(footer)
 
 
 def first_day_of_month(date: datetime.date) -> datetime.date:
@@ -552,7 +567,7 @@ def first_day_of_next_month(date: datetime.date) -> datetime.date:
     )
 
 
-def calendar_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str, str]):
+def export_calendar(task_map: Mapping[Tuple[int], Task]):
     """
     Exports a task list into a basic calendar view.
     """
@@ -581,8 +596,6 @@ def calendar_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str,
         if task.deadline is not None and task.status != TaskStatus.DONE
     )
     tasks_by_deadline = sorted(tasks_with_deadline, key=lambda task: task.deadline)
-
-    print(header)
 
     if not tasks_by_deadline:
         print("<h1> No Active Tasks Have A Deadline</h1>")
@@ -674,16 +687,24 @@ def calendar_exporter(task_map: Mapping[Tuple[int], Task], configs: Mapping[str,
 
     print("</tr></table>")
 
-    try:
-        summary = int(configs.get('summary', '1')) > 0
-    except ValueError:
-        summary = True
+def export_html_report(task_map: Mapping[Tuple[int], Task], include_toc: bool, include_calendar: bool, include_summary: bool):
+    """
+    Exports a task list into an HTML view, with different components.
+    """
+    print(HTML_HEADER)
 
-    if summary:
-        print("<hr>")
-        export_tasks_only(tasks)
+    if include_toc:
+        export_table_of_contents(task_map)
+        print('<hr>')
 
-    print(footer)
+    if include_calendar:
+        export_calendar(task_map)
+        print('<hr>')
+
+    if include_summary:
+        export_task_list(sort_tasks(task_map.values()))
+
+    print(HTML_FOOTER)
 
 def build_config_map(configs: List[str]) -> Mapping[str, str]:
     """
@@ -727,12 +748,19 @@ def main():
         task_map = verify_task_tree(tasks)
         resolve_default_values(task_map)
 
-        if exporter == "plain":
+        is_html_export = exporter in {"simple", "calendar", "full"}
+        if is_html_export:
+            try:
+                include_summary = int(configs.get("summary", "1")) == 1
+            except ValueError:
+                print("Invalid value for summary config, must be 1 or 0")
+                sys.exit(1)
+
+            include_toc = exporter in {"simple", "full"}
+            include_calendar = exporter in {"calendar", "full"}
+            export_html_report(task_map, include_toc, include_calendar, include_summary)
+        elif exporter == "plain":
             plain_exporter(tasks, configs)
-        elif exporter == "simple":
-            simple_exporter(task_map, configs)
-        elif exporter == "calendar":
-            calendar_exporter(task_map, configs)
         else:
             print("Unknown exporter:", exporter, file=sys.stderr)
             sys.exit(1)

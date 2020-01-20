@@ -73,8 +73,10 @@ identifier.
 Once you have a Task Burrito file, you can export it into one of a few different
 export formats:
 
-- A **calendar** view which shows tasks according to the dates when they're due.
+- A **calendar** HTML view which shows tasks according to the dates when they're due
   
-- A **simple** view which renders the file to HTML and adds a table of contents
+- A **simple** HTML view which renders the file which adds a table of contents
 
-- A **plain** view which parses the file and re-assembles it for printing
+- A **full** HTML view including a table of contents and calendar
+
+- A **plain** view which parses the file and re-assembles it in the same output format
