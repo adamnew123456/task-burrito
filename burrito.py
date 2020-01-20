@@ -414,7 +414,7 @@ def parse_file(fobj: IO) -> List[Task]:
     return tasks
 
 
-def plain_exporter(tasks: List[Task], configs: Mapping[str, str]):
+def plain_exporter(tasks: List[Task]):
     """
     Exports a task list back into the default format, sorting the tasks and
     dropping anything that was ignored.
@@ -453,6 +453,7 @@ HTML_FOOTER = """
     </body>
 </html>
 """
+
 
 def export_task_list(tasks: List[Task]):
     """
@@ -516,20 +517,24 @@ def export_table_of_contents(task_map: Mapping[Tuple[int], Task]):
             )
             short_line = "{} on {}".format(
                 task_status_color(task.status),
-                ", ".join(task_id_link(dep.task_id) for dep in blockers)
+                ", ".join(task_id_link(dep.task_id) for dep in blockers),
             )
         elif task.status == TaskStatus.TODO:
             if task.deadline is None:
                 short_line = task_status_color(task.status)
             else:
-                short_line = "{} by {}".format(task_status_color(task.status), task.deadline.isoformat())
+                short_line = "{} by {}".format(
+                    task_status_color(task.status), task.deadline.isoformat()
+                )
         elif task.status == TaskStatus.DONE:
             short_line = task_status_color(task.status)
         elif task.status == TaskStatus.IN_PROGRESS:
             if task.deadline is None:
                 short_line = task_status_color(task.status)
             else:
-                short_line = "{} due by {}".format(task_status_color(task.status), task.deadline.isoformat())
+                short_line = "{} due by {}".format(
+                    task_status_color(task.status), task.deadline.isoformat()
+                )
         else:
             short_line = "Unknown status {}".format(task.status)
 
@@ -571,24 +576,6 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
     """
     Exports a task list into a basic calendar view.
     """
-    header = """
-<html lang="en">
-    <head>
-        <meta charset="utf-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title> Project Calendar </title>
-        <style>
-        table, th, td { border: 1px solid black; border-collapse: collapse; }
-        td { vertical-align: top }
-        </style>
-    </head>
-    <body>
-"""
-    footer = """
-    </body>
-</html>
-"""
-
     tasks = sort_tasks(task_map.values())
     tasks_with_deadline = (
         task
@@ -687,7 +674,13 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
 
     print("</tr></table>")
 
-def export_html_report(task_map: Mapping[Tuple[int], Task], include_toc: bool, include_calendar: bool, include_summary: bool):
+
+def export_html_report(
+    task_map: Mapping[Tuple[int], Task],
+    include_toc: bool,
+    include_calendar: bool,
+    include_summary: bool,
+):
     """
     Exports a task list into an HTML view, with different components.
     """
@@ -695,16 +688,17 @@ def export_html_report(task_map: Mapping[Tuple[int], Task], include_toc: bool, i
 
     if include_toc:
         export_table_of_contents(task_map)
-        print('<hr>')
+        print("<hr>")
 
     if include_calendar:
         export_calendar(task_map)
-        print('<hr>')
+        print("<hr>")
 
     if include_summary:
         export_task_list(sort_tasks(task_map.values()))
 
     print(HTML_FOOTER)
+
 
 def build_config_map(configs: List[str]) -> Mapping[str, str]:
     """
@@ -712,14 +706,18 @@ def build_config_map(configs: List[str]) -> Mapping[str, str]:
     """
     config_map = {}
     for config in configs:
-        if '=' not in config:
-            print("Invalid option '{}', not in KEY=VALUE format".format(config), file=sys.stderr)
+        if "=" not in config:
+            print(
+                "Invalid option '{}', not in KEY=VALUE format".format(config),
+                file=sys.stderr,
+            )
             sys.exit(1)
 
-        (key, value) = config.split('=', 2)
+        (key, value) = config.split("=", 2)
         config_map[key] = value
 
     return config_map
+
 
 def main():
     """
@@ -760,7 +758,7 @@ def main():
             include_calendar = exporter in {"calendar", "full"}
             export_html_report(task_map, include_toc, include_calendar, include_summary)
         elif exporter == "plain":
-            plain_exporter(tasks, configs)
+            plain_exporter(tasks)
         else:
             print("Unknown exporter:", exporter, file=sys.stderr)
             sys.exit(1)
