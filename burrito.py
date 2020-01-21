@@ -480,7 +480,11 @@ def export_task_list(tasks: List[Task]):
         print("<td>", task_id_str(task.task_id), "</td>")
         print("<td>", task_status_color(task.status), "</td>")
         print("<td>", task.priority or "Unassigned", "</td>")
-        print("<td>", task.deadline.isoformat() if task.deadline else "Unassigned", "</td>")
+        print(
+            "<td>",
+            task.deadline.isoformat() if task.deadline else "Unassigned",
+            "</td>",
+        )
         print(
             "<td>",
             ", ".join(task_id_link(dep) for dep in sorted(task.depends)),
