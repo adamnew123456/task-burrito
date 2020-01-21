@@ -141,7 +141,7 @@ def task_status_color(status: TaskStatus) -> str:
         color = "orange"
     elif status == TaskStatus.BLOCKED:
         name = "BLOCKED"
-        color = "darkgoldenrod"
+        color = "yellow"
     else:
         name = "DONE"
         color = "green"
@@ -444,6 +444,8 @@ HTML_HEADER = """
         <style>
         table, th, td { border: 1px solid black; border-collapse: collapse; vertical-align: top; }
         .toc { list-style: none; }
+        body { background-color: darkgray; }
+        td.calendar { min-width: 80px; height: 50px; }
         </style>
     </head>
     <body>
@@ -478,7 +480,7 @@ def export_task_list(tasks: List[Task]):
         print("<td>", task_id_str(task.task_id), "</td>")
         print("<td>", task_status_color(task.status), "</td>")
         print("<td>", task.priority or "Unassigned", "</td>")
-        print("<td>", task.deadline.isoformat() or "Unassigned", "</td>")
+        print("<td>", task.deadline.isoformat() if task.deadline else "Unassigned", "</td>")
         print(
             "<td>",
             ", ".join(task_id_link(dep) for dep in sorted(task.depends)),
@@ -510,15 +512,18 @@ def export_table_of_contents(task_map: Mapping[Tuple[int], Task]):
             depth -= 1
 
         if task.status == TaskStatus.BLOCKED:
-            blockers = (
+            blockers = [
                 task_map[dep]
                 for dep in sorted(task.depends)
                 if task_map[dep].status != TaskStatus.DONE
-            )
-            short_line = "{} on {}".format(
-                task_status_color(task.status),
-                ", ".join(task_id_link(dep.task_id) for dep in blockers),
-            )
+            ]
+            if blockers:
+                short_line = "{} on {}".format(
+                    task_status_color(task.status),
+                    ", ".join(task_id_link(dep.task_id) for dep in blockers),
+                )
+            else:
+                short_line = task_status_color(task.status)
         elif task.status == TaskStatus.TODO:
             if task.deadline is None:
                 short_line = task_status_color(task.status)
@@ -605,6 +610,11 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
 
                 if new_month:
                     if not first_day:
+                        filler_weekday = current_weekday
+                        while filler_weekday < 7:
+                            print("<td></td>")
+                            filler_weekday += 1
+
                         print("</tr>")
                         print("</table>")
 
@@ -636,7 +646,7 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
                     print("<tr>")
                     new_week = False
 
-                print("<td><b>", current_date.day, "</b>")
+                print("<td class='calendar'><b>", current_date.day, "</b>")
 
                 current_weekday += 1
                 if current_weekday == 7:
@@ -656,6 +666,8 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
             print("</div>")
 
     print("</td>")
+
+    # Fill in days up until the end of the month
     end_of_month = first_day_of_next_month(current_date) - datetime.timedelta(days=1)
     while current_date <= end_of_month:
         if new_week:
@@ -663,7 +675,7 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
             print("<tr>")
             new_week = False
 
-        print("<td><b>", current_date.day, "</b></td>")
+        print("<td class='calendar'><b>", current_date.day, "</b></td>")
 
         current_weekday += 1
         if current_weekday == 7:
@@ -671,6 +683,11 @@ def export_calendar(task_map: Mapping[Tuple[int], Task]):
             new_week = True
 
         current_date += datetime.timedelta(days=1)
+
+    # Fill in empty cells to contain he last week
+    while current_weekday < 7:
+        print("<td></td>")
+        current_weekday += 1
 
     print("</tr></table>")
 
