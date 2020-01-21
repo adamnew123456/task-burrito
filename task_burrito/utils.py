@@ -43,9 +43,7 @@ class Logger:
         """
         print(str(position), fmt.format(*args, **kwargs), file=self.warn_output)
 
-    def error(
-        self, position: FilePosition, fmt: str, *args: Any, **kwargs: Any
-    ):
+    def error(self, position: FilePosition, fmt: str, *args: Any, **kwargs: Any):
         """
         Writes an error about a specific location in the input file.
         """
