@@ -1,7 +1,7 @@
 """
 Various utilities used by the rest of the package.
 """
-from collections import defaultdict
+from collections import Counter, defaultdict
 import datetime
 from dataclasses import dataclass, field
 from enum import Enum
@@ -163,11 +163,33 @@ def resolve_task_defaults(tasks: Mapping[Tuple[int], Task]):
         task.depends |= child_map[task.task_id]
 
 
-def sort_tasks(tasks: List[Task]) -> List[Task]:
+def find_foldable_tasks(tasks: List[Task]) -> Set[Tuple[int]]:
+    """
+    Finds tasks whose children are all marked as DONE. These can be omitted
+    from a table of contents view if folding is enabled.
+    """
+    all_children = Counter()
+    completed_children = Counter()
+    for task in tasks:
+        parent = task_id_parent(task.task_id)
+        if parent is not None:
+            all_children[parent] += 1
+            if task.status == TaskStatus.DONE:
+                completed_children[parent] += 1
+
+    return {
+        task.task_id
+        for task in tasks
+        if all_children[task.task_id] == completed_children[task.task_id]
+        and all_children[task.task_id] > 0
+    }
+
+
+def sort_tasks(tasks: List[Task], reverse: bool = False) -> List[Task]:
     """
     Orders tasks hierarchically by their IDs.
     """
-    return sorted(tasks, key=lambda entry: entry.task_id)
+    return sorted(tasks, key=lambda entry: entry.task_id, reverse=reverse)
 
 
 def parse_task_id(task_id: str) -> Tuple[int]:

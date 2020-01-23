@@ -43,6 +43,7 @@ class ExportConfig:
     include_toc: bool = field(default=False, init=False)
     include_calendar: bool = field(default=False, init=False)
     include_summary: bool = field(default=True, init=False)
+    fold_toc: bool = field(default=True, init=False)
     body_suffix: str = field(default=None, init=False)
     head_prefix: str = field(default=None, init=False)
 
@@ -144,16 +145,27 @@ def export_task_list(tasks: List[utils.Task], output: IO):
             print(markdown.markdown(task.content, file=output), file=output)
 
 
-def export_table_of_contents(task_map: Mapping[Tuple[int], utils.Task], output: IO):
+def export_table_of_contents(
+    task_map: Mapping[Tuple[int], utils.Task], output: IO, fold: bool
+):
     """
     Exports a task list into HTML without doing any restructuring, similar to
     the plain_exporter.
     """
     tasks = utils.sort_tasks(task_map.values())
+    if fold:
+        foldable = utils.find_foldable_tasks(tasks)
+    else:
+        foldable = set()
 
     print("<h1> Table of Contents </h1>", file=output)
     depth = 0
+    fold_depth = -1
     for task in tasks:
+        if fold_depth != -1 and len(task.task_id) > fold_depth:
+            continue
+
+        fold_depth = -1
         while depth < len(task.task_id):
             print("<ol class='toc'>", file=output)
             depth += 1
@@ -203,6 +215,9 @@ def export_table_of_contents(task_map: Mapping[Tuple[int], utils.Task], output: 
             "</li>",
             file=output,
         )
+
+        if task.task_id in foldable:
+            fold_depth = depth
 
     while depth > 0:
         print("</ol>", file=output)
@@ -337,7 +352,7 @@ def export_html_report(
     print(HTML_HEADER.replace("%HEAD%", config.head_prefix or ""), file=output)
 
     if config.include_toc:
-        export_table_of_contents(task_map, output)
+        export_table_of_contents(task_map, output, config.fold_toc)
         print("<hr>", file=output)
 
     if config.include_calendar:

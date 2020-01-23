@@ -19,6 +19,9 @@ Simple Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
 
+- fold=BOOLEAN: Whether to omit subtasks from the table of contents when all
+  of them are completed. True by default.
+
 Calendar Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
@@ -26,6 +29,9 @@ Calendar Exporter Properties:
 Full Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
+
+- fold=BOOLEAN: Whether to omit subtasks from the TOC when all of them are
+  completed. True by default.
 """
 import html
 from io import StringIO

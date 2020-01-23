@@ -19,6 +19,9 @@ Simple Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
 
+- fold=BOOLEAN: Whether to omit subtasks from the table of contents when all
+  of them are completed. True by default.
+
 Calendar Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
@@ -26,6 +29,9 @@ Calendar Exporter Properties:
 Full Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
+
+- fold=BOOLEAN: Whether to omit subtasks from the TOC when all of them are
+  completed. True by default.
 """
 import sys
 from typing import List
@@ -53,6 +59,11 @@ def build_config_map(configs: List[str]) -> exporter.ExportConfig:
                 raise ValueError(
                     "Invalid value {} for summary config value".format(value)
                 )
+        elif key == "fold":
+            try:
+                export_config.fold_toc = int(value) == 1
+            except ValueError:
+                raise ValueError("Invalid value {} for fold config value".format(value))
 
     return export_config
 
