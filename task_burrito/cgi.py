@@ -30,7 +30,6 @@ Full Exporter Properties:
 import html
 from io import StringIO
 import sys
-from typing import List, Mapping
 
 from task_burrito import app, exporter, parser, utils
 
@@ -42,15 +41,21 @@ def main():
     args = sys.argv[1:]
     input_file = sys.argv[1]
     out = sys.argv[2]
-    configs = app.build_config_map(sys.argv[3:])
 
     warning_buffer = StringIO()
     error_buffer = StringIO()
     output_buffer = StringIO()
 
+    error = False
+    try:
+        configs = app.build_config_map(sys.argv[3:])
+    except ValueError as err:
+        print(str(err), file=error_buffer)
+        error = True
+
     if "-h" in args or "--help" in args:
         print(__doc__, file=error_buffer)
-    else:
+    elif not error:
         try:
             logger = utils.Logger(warning_buffer, output_buffer)
 
@@ -68,25 +73,13 @@ def main():
 
                 is_html_export = out in {"simple", "calendar", "full"}
                 if is_html_export:
-                    try:
-                        include_summary = int(configs.get("summary", "1")) == 1
-
-                        include_toc = out in {"simple", "full"}
-                        include_calendar = out in {"calendar", "full"}
-                        exporter.export_html_report(
-                            task_map,
-                            output_buffer,
-                            include_toc,
-                            include_calendar,
-                            include_summary,
-                        )
-                    except ValueError:
-                        print(
-                            "Invalid value for summary config, must be 1 or 0",
-                            file=error_buffer,
-                        )
+                    configs.include_toc = out in {"simple", "full"}
+                    configs.include_calendar = out in {"calendar", "full"}
+                    configs.head_prefix = '<meta http-equiv="refresh" content="5">'
+                    configs.body_suffix = "%WARNING%"
+                    exporter.export_html_report(task_map, output_buffer, configs)
                 elif out == "plain":
-                    exporter.plain_exporter(tasks, output_buffer)
+                    print("plain exporter not supported in CGI mode", file=error_buffer)
                 else:
                     print("Unknown exporter:", out, file=error_buffer)
 
@@ -114,10 +107,12 @@ def main():
 
         if warning_text:
             output_text = output_text.replace(
-                "</body>",
+                "%WARNING%",
                 "<hr><h1>Warnings</h1><pre>{}</pre></body>".format(
                     html.escape(warning_text)
                 ),
             )
+        else:
+            output_text = output_text.replace("%WARNING%", "")
 
         print(output_text)

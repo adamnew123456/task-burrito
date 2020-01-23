@@ -2,6 +2,7 @@
 Takes tasks from the parser and processes them into different formats.
 """
 import calendar
+from dataclasses import dataclass, field
 import datetime
 import html
 from typing import IO, List, Mapping, Tuple
@@ -12,6 +13,7 @@ from task_burrito import utils
 HTML_HEADER = """
 <html lang="en">
     <head>
+        %HEAD%
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title> Project List </title>
@@ -26,9 +28,23 @@ HTML_HEADER = """
 """
 
 HTML_FOOTER = """
+      %TAIL%
     </body>
 </html>
 """
+
+
+@dataclass
+class ExportConfig:
+    """
+    Configuration options for the exporter
+    """
+
+    include_toc: bool = field(default=False, init=False)
+    include_calendar: bool = field(default=False, init=False)
+    include_summary: bool = field(default=True, init=False)
+    body_suffix: str = field(default=None, init=False)
+    head_prefix: str = field(default=None, init=False)
 
 
 def task_id_link(task_id: Tuple[int]) -> str:
@@ -313,26 +329,22 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
 
 
 def export_html_report(
-    task_map: Mapping[Tuple[int], utils.Task],
-    output: IO,
-    include_toc: bool,
-    include_calendar: bool,
-    include_summary: bool,
+    task_map: Mapping[Tuple[int], utils.Task], output: IO, config: ExportConfig
 ):
     """
     Exports a task list into an HTML view, with different components.
     """
-    print(HTML_HEADER, file=output)
+    print(HTML_HEADER.replace("%HEAD%", config.head_prefix or ""), file=output)
 
-    if include_toc:
+    if config.include_toc:
         export_table_of_contents(task_map, output)
         print("<hr>", file=output)
 
-    if include_calendar:
+    if config.include_calendar:
         export_calendar(task_map, output)
         print("<hr>", file=output)
 
-    if include_summary:
+    if config.include_summary:
         export_task_list(utils.sort_tasks(task_map.values()), output)
 
-    print(HTML_FOOTER, file=output)
+    print(HTML_FOOTER.replace("%TAIL%", config.body_suffix or ""), file=output)
