@@ -67,6 +67,11 @@ class TaskStatus(Enum):
         return self.name
 
 
+# Used to indicate that a property explicitly should not be inherited from the
+# parent
+NOT_PROVIDED = object()
+
+
 @dataclass
 class Task:
     """
@@ -237,3 +242,9 @@ def first_day_of_next_month(date: datetime.date) -> datetime.date:
         this_month.month + 1 if not end_of_year else 1,
         1,
     )
+
+def is_valued(value: Any):
+    """
+    Checks that a value is either None or NOT_PROVIDED.
+    """
+    return not (value is None or value is NOT_PROVIDED)

@@ -38,19 +38,25 @@ def parse_task_property(
 
     elif prop == "priority":
         try:
-            priority = int(value)
-            if priority not in range(1, 6):
-                logger.warn(position, "Priority value '{}' not in range 1..5", priority)
-                return None
+            if value.lower() == "none":
+                return utils.NOT_PROVIDED
+            else:
+                priority = int(value)
+                if priority not in range(1, 6):
+                    logger.warn(position, "Priority value '{}' not in range 1..5", priority)
+                    return None
 
-            return priority
+                return priority
         except ValueError:
             logger.warn(position, "Priority value '{}' must be an integer", value)
             return None
 
     elif prop == "deadline":
         try:
-            return datetime.date.fromisoformat(value)
+            if value.lower() == "none":
+                return utils.NOT_PROVIDED
+            else:
+                return datetime.date.fromisoformat(value)
         except ValueError:
             logger.warn(position, "Deadline value '{}' not in format YYYY-MM-DD", value)
             return None

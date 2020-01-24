@@ -88,10 +88,10 @@ def plain_exporter(tasks: List[utils.Task], output: IO):
         print("task", utils.task_id_str(task.task_id), file=output)
         print("label", task.label, file=output)
         print("status", str(task.status), file=output)
-        if task.priority:
-            print("priority", task.priority, file=output)
-        if task.deadline:
-            print("deadline", task.deadline.isoformat(), file=output)
+        if task.priority is not None:
+            print("priority", task.priority if utils.is_valued(task.priority) else "none", file=output)
+        if task.deadline is not None:
+            print("deadline", task.deadline.isoformat() if utils.is_valued(task.deadline) else "none", file=output)
         if task.depends:
             print(
                 "depends",
@@ -125,10 +125,10 @@ def export_task_list(tasks: List[utils.Task], output: IO):
         print("</tr>", file=output)
         print("<td>", utils.task_id_str(task.task_id), "</td>", file=output)
         print("<td>", task_status_color(task.status), "</td>", file=output)
-        print("<td>", task.priority or "Unassigned", "</td>", file=output)
+        print("<td>", task.priority if utils.is_valued(task.priority) else "Unassigned", "</td>", file=output)
         print(
             "<td>",
-            task.deadline.isoformat() if task.deadline else "Unassigned",
+            task.deadline.isoformat() if utils.is_valued(task.deadline) else "Unassigned",
             "</td>",
             file=output,
         )
@@ -188,7 +188,7 @@ def export_table_of_contents(
             else:
                 short_line = task_status_color(task.status)
         elif task.status == utils.TaskStatus.TODO:
-            if task.deadline is None:
+            if not utils.is_valued(task.deadline):
                 short_line = task_status_color(task.status)
             else:
                 short_line = "{} by {}".format(
@@ -197,7 +197,7 @@ def export_table_of_contents(
         elif task.status == utils.TaskStatus.DONE:
             short_line = task_status_color(task.status)
         elif task.status == utils.TaskStatus.IN_PROGRESS:
-            if task.deadline is None:
+            if not utils.is_valued(task.deadline):
                 short_line = task_status_color(task.status)
             else:
                 short_line = "{} due by {}".format(
@@ -232,7 +232,7 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
     tasks_with_deadline = (
         task
         for task in tasks
-        if task.deadline is not None and task.status != utils.TaskStatus.DONE
+        if utils.is_valued(task.deadline) and task.status != utils.TaskStatus.DONE
     )
     tasks_by_deadline = sorted(tasks_with_deadline, key=lambda task: task.deadline)
 
