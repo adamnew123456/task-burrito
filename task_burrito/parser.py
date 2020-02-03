@@ -30,6 +30,7 @@ def parse_task_property(
         return value
 
     elif prop == "status":
+        value = value.upper()
         if value not in ("DONE", "IN-PROGRESS", "BLOCKED", "TODO"):
             logger.warn(position, "Invalid status value '{}'", value)
             return None
