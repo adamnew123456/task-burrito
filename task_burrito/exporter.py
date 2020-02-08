@@ -253,6 +253,7 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
 
     if not tasks_by_deadline:
         print("<h1> No Active Tasks Have A Deadline</h1>", file=output)
+        new_month = False
     else:
         current_date = utils.first_day_of_month(tasks_by_deadline[0].deadline)
         current_weekday = calendar.weekday(
