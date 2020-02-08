@@ -99,12 +99,10 @@ def main():
     output_text = output_buffer.getvalue()
 
     if error_text:
-        print("HTTP/1.0 200 OK")
         print("Content-Type: text/plain")
         print()
         print(error_text)
     else:
-        print("HTTP/1.0 200 OK")
         print("Content-Type: text/html")
         print()
 
