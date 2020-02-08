@@ -253,7 +253,6 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
 
     if not tasks_by_deadline:
         print("<h1> No Active Tasks Have A Deadline</h1>", file=output)
-        new_month = False
     else:
         current_date = utils.first_day_of_month(tasks_by_deadline[0].deadline)
         current_weekday = calendar.weekday(
@@ -329,37 +328,37 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
             )
             print("</div>", file=output)
 
-    print("</td>", file=output)
+        print("</td>", file=output)
 
-    # If the last task doesn't end on a month boundary, then fill out the rest
-    # of the month
-    if not new_month:
-        end_of_month = utils.first_day_of_next_month(current_date) - datetime.timedelta(
-            days=1
-        )
-        while current_date <= end_of_month:
-            if new_week:
-                print("</tr>", file=output)
-                print("<tr>", file=output)
-                new_week = False
-
-            print(
-                "<td class='calendar'><b>", current_date.day, "</b></td>", file=output
+        # If the last task doesn't end on a month boundary, then fill out the rest
+        # of the month
+        if not new_month:
+            end_of_month = utils.first_day_of_next_month(current_date) - datetime.timedelta(
+                days=1
             )
+            while current_date <= end_of_month:
+                if new_week:
+                    print("</tr>", file=output)
+                    print("<tr>", file=output)
+                    new_week = False
 
-            current_weekday += 1
-            if current_weekday == 7:
-                current_weekday = 0
-                new_week = True
+                print(
+                    "<td class='calendar'><b>", current_date.day, "</b></td>", file=output
+                )
 
-            current_date += datetime.timedelta(days=1)
+                current_weekday += 1
+                if current_weekday == 7:
+                    current_weekday = 0
+                    new_week = True
 
-        # Fill in empty cells to contain he last week
-        while current_weekday < 7:
-            print("<td></td>", file=output)
-            current_weekday += 1
+                current_date += datetime.timedelta(days=1)
 
-        print("</tr></table>", file=output)
+            # Fill in empty cells to contain he last week
+            while current_weekday < 7:
+                print("<td></td>", file=output)
+                current_weekday += 1
+
+            print("</tr></table>", file=output)
 
 
 def export_html_report(
