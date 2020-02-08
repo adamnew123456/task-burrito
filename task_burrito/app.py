@@ -33,6 +33,7 @@ Full Exporter Properties:
 - fold=BOOLEAN: Whether to omit subtasks from the TOC when all of them are
   completed. True by default.
 """
+import os
 import sys
 from typing import List
 
@@ -88,11 +89,13 @@ def main():
             sys.exit(1)
 
         if input_file == "-":
+            base_path = os.getcwd()
             in_fobj = sys.stdin
         else:
+            base_path = os.path.dirname(os.path.abspath(input_file))
             in_fobj = open(input_file)
 
-        tasks = parser.parse_file(in_fobj, logger)
+        tasks = parser.parse_file(in_fobj, base_path, logger)
         if not tasks:
             print("Tasks file cannot be empty", file=sys.stderr)
             sys.exit(1)

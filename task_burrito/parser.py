@@ -3,7 +3,8 @@ Processes Markdown files containing Task Burrito annotations into a series of
 Tasks.
 """
 import datetime
-from typing import Any, IO, List, Optional
+import os.path
+from typing import Any, IO, List, Optional, Union
 
 from task_burrito import utils
 
@@ -44,7 +45,9 @@ def parse_task_property(
             else:
                 priority = int(value)
                 if priority not in range(1, 6):
-                    logger.warn(position, "Priority value '{}' not in range 1..5", priority)
+                    logger.warn(
+                        position, "Priority value '{}' not in range 1..5", priority
+                    )
                     return None
 
                 return priority
@@ -88,7 +91,7 @@ def parse_task_property(
 
 def parse_task(
     fobj: IO, logger: utils.Logger, position: utils.FilePosition
-) -> utils.Task:
+) -> Union[utils.Task, List[str]]:
     """
     Parses a task definition from the given file stream.
 
@@ -98,7 +101,9 @@ def parse_task(
     """
     property_words = {"task", "label", "status", "priority", "deadline", "depends"}
     properties = {}
+    includes = []
 
+    is_include_block = None
     found_end = False
     for line in fobj:
         line = line.strip()
@@ -115,23 +120,39 @@ def parse_task(
         try:
             prop_end = line.index(" ")
             prop = line[:prop_end]
+            raw_value = line[prop_end + 1 :].strip()
 
-            if prop not in property_words:
+            if prop.lower() == "include":
+                if is_include_block is None:
+                    is_include_block = True
+                elif not is_include_block:
+                    logger.warn(position, "Ignoring include in a non-include block")
+                    continue
+
+                includes.append(raw_value)
+
+            elif prop not in property_words:
                 logger.warn(
                     position, "Unexpected property type '{}' in task block", prop
                 )
                 continue
 
-            if prop in properties:
+            elif prop in properties:
                 logger.warn(
                     position, "Duplicate property '{}' not allowed in task block", prop
                 )
                 continue
 
-            raw_value = line[prop_end + 1 :].strip()
-            value = parse_task_property(prop, raw_value, logger, position)
-            if value is not None:
-                properties[prop] = value
+            elif is_include_block:
+                logger.warn(
+                    position, "Ignoring non-include property in an include block"
+                )
+                continue
+
+            else:
+                value = parse_task_property(prop, raw_value, logger, position)
+                if value is not None:
+                    properties[prop] = value
 
         except ValueError:
             logger.warn(position, "Ignoring non-property line within task block")
@@ -140,36 +161,40 @@ def parse_task(
         logger.warn(position, "Unexpected task block at end of file")
         return None
 
-    for prop in {"task", "label", "status"}:
-        if prop not in properties:
-            # Unlike most other problems, there's not a way to recover from
-            # this. There's no way to synthesize these values or usefully
-            # ignore them.
-            raise SyntaxError(
-                "{} Task properties must have a '{}' property value".format(
-                    str(position), prop
+    if includes:
+        return includes
+    else:
+        for prop in {"task", "label", "status"}:
+            if prop not in properties:
+                # Unlike most other problems, there's not a way to recover from
+                # this. There's no way to synthesize these values or usefully
+                # ignore them.
+                raise SyntaxError(
+                    "{} Task properties must have a '{}' property value".format(
+                        str(position), prop
+                    )
                 )
-            )
 
-    return utils.Task(
-        properties["task"],
-        properties["label"],
-        properties["status"],
-        properties.get("priority"),
-        properties.get("deadline"),
-        properties.get("depends", set()),
-    )
+        return utils.Task(
+            properties["task"],
+            properties["label"],
+            properties["status"],
+            properties.get("priority"),
+            properties.get("deadline"),
+            properties.get("depends", set()),
+        )
 
 
-def parse_file(fobj: IO, logger: utils.Logger) -> List[utils.Task]:
+def parse_file(fobj: IO, base_dir: str, logger: utils.Logger) -> List[utils.Task]:
     """
     Parses the contents of a task file and returns each task along with the
     notes associated with it.
     """
-    position = utils.FilePosition()
+    position = utils.FilePosition(fobj.name)
     current_task = None
     current_content = []
     tasks = []
+    includes = []
 
     for line in fobj:
         position.next_line()
@@ -179,7 +204,16 @@ def parse_file(fobj: IO, logger: utils.Logger) -> List[utils.Task]:
                 tasks.append(current_task)
                 current_content.clear()
 
-            current_task = parse_task(fobj, logger, position)
+            result = parse_task(fobj, logger, position)
+            if isinstance(result, list):
+                for include in result:
+                    if os.path.isabs(include):
+                        includes.append(include)
+                    else:
+                        includes.append(os.path.join(base_dir, include))
+                current_task = None
+            else:
+                current_task = result
         elif current_task is None:
             logger.warn(position, "Ignoring content that does not belong to a task")
         else:
@@ -189,5 +223,9 @@ def parse_file(fobj: IO, logger: utils.Logger) -> List[utils.Task]:
         current_task.content = "".join(current_content)
         tasks.append(current_task)
         current_content.clear()
+
+    for include in includes:
+        with open(include) as include_fobj:
+            tasks += parse_file(include_fobj, base_dir, logger)
 
     return tasks

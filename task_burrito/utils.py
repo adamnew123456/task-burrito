@@ -13,7 +13,8 @@ class FilePosition:
     A position within the file which can be updated as characters are read.
     """
 
-    def __init__(self):
+    def __init__(self, name):
+        self.name = name
         self.line = 0
 
     def next_line(self, n: int = 1):
@@ -24,7 +25,7 @@ class FilePosition:
         self.line += n
 
     def __str__(self):
-        return "Line {}:".format(self.line)
+        return "{}:{}:".format(self.name, self.line)
 
 
 class Logger:
@@ -242,6 +243,7 @@ def first_day_of_next_month(date: datetime.date) -> datetime.date:
         this_month.month + 1 if not end_of_year else 1,
         1,
     )
+
 
 def is_valued(value: Any):
     """

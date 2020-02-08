@@ -3,8 +3,7 @@ Usage: burrito-cgi INPUT-FILE EXPORTER [PROPERTY=VALUE]...
 
 Arguments:
 
-- INPUT-FILE: The path to a Markdown file with Task Burrito anntoations. May
-  also be - for stdin.
+- INPUT-FILE: The path to a Markdown file with Task Burrito anntoations.
 
 - EXPORTER: The name of an exporter (one of: "plain", "simple", "calendar", "full")
 
@@ -35,6 +34,7 @@ Full Exporter Properties:
 """
 import html
 from io import StringIO
+import os
 import sys
 
 from task_burrito import app, exporter, parser, utils
@@ -64,13 +64,10 @@ def main():
     elif not error:
         try:
             logger = utils.Logger(warning_buffer, output_buffer)
+            base_path = os.path.dirname(os.path.abspath(input_file))
+            in_fobj = open(input_file)
 
-            if input_file == "-":
-                in_fobj = sys.stdin
-            else:
-                in_fobj = open(input_file)
-
-            tasks = parser.parse_file(in_fobj, logger)
+            tasks = parser.parse_file(in_fobj, base_path, logger)
             if not tasks:
                 print("Task file cannot be empty", file=error_buffer)
             else:

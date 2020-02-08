@@ -89,9 +89,17 @@ def plain_exporter(tasks: List[utils.Task], output: IO):
         print("label", task.label, file=output)
         print("status", str(task.status), file=output)
         if task.priority is not None:
-            print("priority", task.priority if utils.is_valued(task.priority) else "none", file=output)
+            print(
+                "priority",
+                task.priority if utils.is_valued(task.priority) else "none",
+                file=output,
+            )
         if task.deadline is not None:
-            print("deadline", task.deadline.isoformat() if utils.is_valued(task.deadline) else "none", file=output)
+            print(
+                "deadline",
+                task.deadline.isoformat() if utils.is_valued(task.deadline) else "none",
+                file=output,
+            )
         if task.depends:
             print(
                 "depends",
@@ -125,10 +133,17 @@ def export_task_list(tasks: List[utils.Task], output: IO):
         print("</tr>", file=output)
         print("<td>", utils.task_id_str(task.task_id), "</td>", file=output)
         print("<td>", task_status_color(task.status), "</td>", file=output)
-        print("<td>", task.priority if utils.is_valued(task.priority) else "Unassigned", "</td>", file=output)
         print(
             "<td>",
-            task.deadline.isoformat() if utils.is_valued(task.deadline) else "Unassigned",
+            task.priority if utils.is_valued(task.priority) else "Unassigned",
+            "</td>",
+            file=output,
+        )
+        print(
+            "<td>",
+            task.deadline.isoformat()
+            if utils.is_valued(task.deadline)
+            else "Unassigned",
             "</td>",
             file=output,
         )
@@ -327,7 +342,9 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
                 print("<tr>", file=output)
                 new_week = False
 
-            print("<td class='calendar'><b>", current_date.day, "</b></td>", file=output)
+            print(
+                "<td class='calendar'><b>", current_date.day, "</b></td>", file=output
+            )
 
             current_weekday += 1
             if current_weekday == 7:
