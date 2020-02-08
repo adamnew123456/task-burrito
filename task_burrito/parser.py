@@ -207,10 +207,20 @@ def parse_file(fobj: IO, base_dir: str, logger: utils.Logger) -> List[utils.Task
             result = parse_task(fobj, logger, position)
             if isinstance(result, list):
                 for include in result:
-                    if os.path.isabs(include):
-                        includes.append(include)
+                    abs_include = (
+                        include
+                        if os.path.isabs(include)
+                        else os.path.join(base_dir, include)
+                    )
+                    if not os.path.isfile(abs_include):
+                        logger.warn(
+                            position,
+                            "Referenced include '{}' does not exist".format(
+                                abs_include
+                            ),
+                        )
                     else:
-                        includes.append(os.path.join(base_dir, include))
+                        includes.append(abs_include)
                 current_task = None
             else:
                 current_task = result
