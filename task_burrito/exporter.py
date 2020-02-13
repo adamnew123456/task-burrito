@@ -358,7 +358,7 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
                 print("<td></td>", file=output)
                 current_weekday += 1
 
-            print("</tr></table>", file=output)
+        print("</tr></table>", file=output)
 
 
 def export_html_report(
