@@ -109,6 +109,9 @@ Options:
 
 * `summary=0|1` determines whether to include the full property listing. True (1)
   by default.
+  
+* `refresh=0|1` determines whether to include an auto-refresh snippet in the 
+  generated page. Only affects CGI. True by default.
 
 ## simple
 
@@ -125,6 +128,9 @@ Options:
   those subtasks are marked as DONE. Note that this does not take into account the
   status of sub-sub tasks so non-DONE tasks may be hidden if their parent is marked
   as DONE.
+  
+* `refresh=0|1` determines whether to include an auto-refresh snippet in the 
+  generated page. Only affects CGI. True by default.
 
 ## full
 
@@ -140,6 +146,9 @@ Options:
   those subtasks are marked as DONE. Note that this does not take into account the
   status of sub-sub tasks so non-DONE tasks may be hidden if their parent is marked
   as DONE.
+  
+* `refresh=0|1` determines whether to include an auto-refresh snippet in the 
+  generated page. Only affects CGI. True by default.
 
 ## plain
 

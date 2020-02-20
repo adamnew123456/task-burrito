@@ -13,7 +13,7 @@ from task_burrito import utils
 HTML_HEADER = """
 <html lang="en">
     <head>
-        %HEAD%
+        %REFRESH%
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <title> Project List </title>
@@ -45,7 +45,7 @@ class ExportConfig:
     include_summary: bool = field(default=True, init=False)
     fold_toc: bool = field(default=True, init=False)
     body_suffix: str = field(default=None, init=False)
-    head_prefix: str = field(default=None, init=False)
+    include_refresh: bool = field(default=False, init=False)
 
 
 def task_id_link(task_id: Tuple[int]) -> str:
@@ -333,9 +333,9 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
         # If the last task doesn't end on a month boundary, then fill out the rest
         # of the month
         if not new_month:
-            end_of_month = utils.first_day_of_next_month(current_date) - datetime.timedelta(
-                days=1
-            )
+            end_of_month = utils.first_day_of_next_month(
+                current_date
+            ) - datetime.timedelta(days=1)
             while current_date <= end_of_month:
                 if new_week:
                     print("</tr>", file=output)
@@ -343,7 +343,10 @@ def export_calendar(task_map: Mapping[Tuple[int], utils.Task], output: IO):
                     new_week = False
 
                 print(
-                    "<td class='calendar'><b>", current_date.day, "</b></td>", file=output
+                    "<td class='calendar'><b>",
+                    current_date.day,
+                    "</b></td>",
+                    file=output,
                 )
 
                 current_weekday += 1
@@ -367,7 +370,13 @@ def export_html_report(
     """
     Exports a task list into an HTML view, with different components.
     """
-    print(HTML_HEADER.replace("%HEAD%", config.head_prefix or ""), file=output)
+    if config.include_refresh:
+        print(
+            HTML_HEADER.replace("%REFRESH%", '<meta http-equiv="refresh" content="5">'),
+            file=output,
+        )
+    else:
+        print(HTML_HEADER.replace("%REFRESH%", ""), file=output)
 
     if config.include_toc:
         export_table_of_contents(task_map, output, config.fold_toc)

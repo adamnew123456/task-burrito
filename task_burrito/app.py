@@ -40,11 +40,12 @@ from typing import List
 from task_burrito import exporter, parser, utils
 
 
-def build_config_map(configs: List[str]) -> exporter.ExportConfig:
+def build_config_map(configs: List[str], is_cgi: bool = False) -> exporter.ExportConfig:
     """
     Parses a configuration list into a mapping of configuration values.
     """
     export_config = exporter.ExportConfig()
+    export_config.include_refresh = is_cgi
     for config in configs:
         if "=" not in config:
             raise ValueError(
@@ -66,6 +67,15 @@ def build_config_map(configs: List[str]) -> exporter.ExportConfig:
             except ValueError:
                 raise ValueError("Invalid value {} for fold config value".format(value))
 
+        elif key == "refresh":
+            if is_cgi:
+                try:
+                    export_config.include_refresh = int(value) == 1
+                except ValueError:
+                    raise ValueError(
+                        "Invalid value {} for fold config value".format(value)
+                    )
+
     return export_config
 
 
@@ -83,7 +93,7 @@ def main():
         input_file = sys.argv[1]
         out = sys.argv[2]
         try:
-            configs = build_config_map(sys.argv[3:])
+            configs = build_config_map(sys.argv[3:], is_cgi=False)
         except ValueError as err:
             print(str(err), file=sys.stderr)
             sys.exit(1)

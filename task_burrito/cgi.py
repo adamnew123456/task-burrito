@@ -21,9 +21,15 @@ Simple Exporter Properties:
 - fold=BOOLEAN: Whether to omit subtasks from the table of contents when all
   of them are completed. True by default.
 
+- refresh=BOOLEAN: Whether to emit HTML which automatically refreshes the page.
+  True by default.
+
 Calendar Exporter Properties:
 
 - summary=BOOLEAN: Whether to include the full task list with notes. True by default.
+
+- refresh=BOOLEAN: Whether to emit HTML which automatically refreshes the page.
+  True by default.
 
 Full Exporter Properties:
 
@@ -31,6 +37,9 @@ Full Exporter Properties:
 
 - fold=BOOLEAN: Whether to omit subtasks from the TOC when all of them are
   completed. True by default.
+
+- refresh=BOOLEAN: Whether to emit HTML which automatically refreshes the page.
+  True by default.
 """
 import html
 from io import StringIO
@@ -54,7 +63,7 @@ def main():
 
     error = False
     try:
-        configs = app.build_config_map(sys.argv[3:])
+        configs = app.build_config_map(sys.argv[3:], is_cgi=True)
     except ValueError as err:
         print(str(err), file=error_buffer)
         error = True
@@ -78,7 +87,6 @@ def main():
                 if is_html_export:
                     configs.include_toc = out in {"simple", "full"}
                     configs.include_calendar = out in {"calendar", "full"}
-                    configs.head_prefix = '<meta http-equiv="refresh" content="5">'
                     configs.body_suffix = "%WARNING%"
                     exporter.export_html_report(task_map, output_buffer, configs)
                 elif out == "plain":

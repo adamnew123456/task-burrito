@@ -42,15 +42,15 @@ def parse_task_property(
         try:
             if value.lower() == "none":
                 return utils.NOT_PROVIDED
-            else:
-                priority = int(value)
-                if priority not in range(1, 6):
-                    logger.warn(
-                        position, "Priority value '{}' not in range 1..5", priority
-                    )
-                    return None
 
-                return priority
+            priority = int(value)
+            if priority not in range(1, 6):
+                logger.warn(
+                    position, "Priority value '{}' not in range 1..5", priority
+                )
+                return None
+
+            return priority
         except ValueError:
             logger.warn(position, "Priority value '{}' must be an integer", value)
             return None
@@ -59,8 +59,8 @@ def parse_task_property(
         try:
             if value.lower() == "none":
                 return utils.NOT_PROVIDED
-            else:
-                return datetime.date.fromisoformat(value)
+
+            return datetime.date.fromisoformat(value)
         except ValueError:
             logger.warn(position, "Deadline value '{}' not in format YYYY-MM-DD", value)
             return None
@@ -163,26 +163,26 @@ def parse_task(
 
     if includes:
         return includes
-    else:
-        for prop in {"task", "label", "status"}:
-            if prop not in properties:
-                # Unlike most other problems, there's not a way to recover from
-                # this. There's no way to synthesize these values or usefully
-                # ignore them.
-                raise SyntaxError(
-                    "{} Task properties must have a '{}' property value".format(
-                        str(position), prop
-                    )
-                )
 
-        return utils.Task(
-            properties["task"],
-            properties["label"],
-            properties["status"],
-            properties.get("priority"),
-            properties.get("deadline"),
-            properties.get("depends", set()),
-        )
+    for prop in {"task", "label", "status"}:
+        if prop not in properties:
+            # Unlike most other problems, there's not a way to recover from
+            # this. There's no way to synthesize these values or usefully
+            # ignore them.
+            raise SyntaxError(
+                "{} Task properties must have a '{}' property value".format(
+                    str(position), prop
+                )
+            )
+
+    return utils.Task(
+        properties["task"],
+        properties["label"],
+        properties["status"],
+        properties.get("priority"),
+        properties.get("deadline"),
+        properties.get("depends", set()),
+    )
 
 
 def parse_file(fobj: IO, base_dir: str, logger: utils.Logger) -> List[utils.Task]:
