@@ -9,7 +9,7 @@ setup(
          'burrito-cgi = task_burrito.cgi:main']
     },
     author='Chris Marchetti',
-    version='0.5',
+    version='0.6',
     description='Personal project manager',
     author_email='adamnew123456@gmail.com',
     url='http://github.com/adamnew123456/task-burrito',

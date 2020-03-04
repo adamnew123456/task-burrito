@@ -84,7 +84,7 @@ def plain_exporter(tasks: List[utils.Task], output: IO):
     """
     tasks = utils.sort_tasks(tasks)
     for task in tasks:
-        print("---", file=output)
+        print("***", file=output)
         print("task", utils.task_id_str(task.task_id), file=output)
         print("label", task.label, file=output)
         print("status", str(task.status), file=output)
@@ -106,7 +106,7 @@ def plain_exporter(tasks: List[utils.Task], output: IO):
                 " ".join(utils.task_id_str(dep) for dep in sorted(task.depends)),
                 file=output,
             )
-        print("---", file=output)
+        print("***", file=output)
         print(task.content, end="", file=output)
 
 

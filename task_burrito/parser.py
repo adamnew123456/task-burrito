@@ -113,7 +113,7 @@ def parse_task(
             logger.warn(position, "Blank lines are not recommended within task blocks")
             continue
 
-        if line == "---":
+        if line == "***":
             found_end = True
             break
 
@@ -198,7 +198,7 @@ def parse_file(fobj: IO, base_dir: str, logger: utils.Logger) -> List[utils.Task
 
     for line in fobj:
         position.next_line()
-        if line.strip() == "---":
+        if line.strip() == "***":
             if current_task is not None:
                 current_task.content = "".join(current_content)
                 tasks.append(current_task)

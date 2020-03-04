@@ -15,14 +15,14 @@ to what you would see in Jekyll front-matter. For example, this is a basic task
 definition:
 
 ```markdown
----
+***
 task 1.1.2
 label Add documentation page for timeout settings
 status DONE
 priority 3
 deadline 2020-02-01
 depends 1.2 1.3.1
----
+***
 
 Include information about the default settings, supported units and edge cases around disabling timeouts.
 ```
@@ -67,9 +67,9 @@ for this task. The only special aspect is that Task Burrito will arrange for
 anchor links to each task by its identifier:
 
 ```markdown
----
+***
 ...
----
+***
 
 I am related to the [timeout settings docs](#1.1.2)
 ```
@@ -81,10 +81,10 @@ which you can use to reference other files. It contains only values (possibly
 more than one) for the include property:
 
 ```markdown
----
+***
 include personal.md
 include work.md
----
+***
 ```
 
 All non-absolute paths in the include block are processed relative to the root file 
